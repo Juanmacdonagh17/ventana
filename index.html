@@ -9,8 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --madera:#b46b46;
-  --luz:#F6E9DE;
+  --naranja:#F86A17;
+  --vidrio:#FFAE00;
+  --sol:#FFC61A;
   --paper:#EDF1EC;
   --ink:#16232E;
   --rule:#C4D3CA;
@@ -29,12 +30,36 @@ body{
 }
 /* ventana */
 .ventana{
-  position:fixed;inset:0;z-index:0;
-  opacity:.32;
-  pointer-events:none;
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:var(--sol);
+  padding:clamp(6px,1.2vmin,16px);
 }
-.ventana svg{display:block;width:100%;height:100%}
-.ventana g{stroke-width:min(2.4vw,26px)}
+.marco{
+  height:100%;
+  background:var(--vidrio);
+  border:clamp(12px,2.4vmin,34px) solid var(--naranja);
+  position:relative;
+  transform:rotate(.35deg);
+}
+.riel{
+  position:absolute;top:4%;left:1%;right:1%;
+  height:clamp(7px,1.3vmin,18px);background:var(--naranja);
+  transform:rotate(-.5deg);
+}
+.riel i{
+  position:absolute;left:50%;top:-70%;
+  width:clamp(18px,3vmin,42px);height:240%;
+  background:var(--naranja);transform:translateX(-50%);
+}
+.travesano{
+  position:absolute;left:-1%;right:-1%;top:46%;
+  height:clamp(9px,1.8vmin,26px);background:var(--naranja);
+  transform:rotate(-.6deg);
+}
+.alfeizar{
+  position:absolute;left:0;right:0;bottom:0;height:15%;
+  background:var(--naranja);transform:rotate(.4deg);
+}
 
 header{
   position:fixed;top:0;left:0;right:0;z-index:3;
@@ -137,13 +162,11 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 </head>
 <body>
 <div class="ventana" aria-hidden="true">
-  <svg viewBox="0 0 200 300" preserveAspectRatio="none">
-      <rect x="0" y="0" width="200" height="300" fill="var(--luz)"/>
-      <g fill="none" stroke="var(--madera)" vector-effect="non-scaling-stroke">
-        <rect x="7" y="7" width="186" height="286"/>
-        <line x1="7" y1="150" x2="193" y2="150"/>
-      </g>
-    </svg>
+  <div class="marco">
+    <div class="riel"><i></i></div>
+    <div class="travesano"></div>
+    <div class="alfeizar"></div>
+  </div>
 </div>
 <canvas id="sky"></canvas>
 
