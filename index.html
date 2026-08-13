@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
+  --madera:#C0663A;
+  --luz:#F6E9DE;
   --paper:#EDF1EC;
   --ink:#16232E;
   --rule:#C4D3CA;
@@ -25,15 +27,14 @@ body{
   overflow:hidden;
   -webkit-tap-highlight-color:transparent;
 }
-/* papel milimetrado: la superficie sobre la que todo vuela */
-.paper{
+/* ventana */
+.ventana{
   position:fixed;inset:0;z-index:0;
-  background-image:
-    linear-gradient(var(--rule) 1px,transparent 1px),
-    linear-gradient(90deg,var(--rule) 1px,transparent 1px);
-  background-size:2.4rem 2.4rem;
-  opacity:.55;
+  display:grid;place-items:center;
+  opacity:.32;
+  pointer-events:none;
 }
+.ventana svg{height:min(76vh,640px);width:auto;max-width:82vw}
 #sky{position:fixed;inset:0;z-index:1;pointer-events:none}
 
 header{
@@ -136,7 +137,15 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 </style>
 </head>
 <body>
-<div class="paper"></div>
+<div class="ventana" aria-hidden="true">
+  <svg viewBox="0 0 200 300" preserveAspectRatio="xMidYMid meet">
+    <rect x="14" y="14" width="172" height="272" fill="var(--luz)"/>
+    <g fill="none" stroke="var(--madera)" stroke-width="14">
+      <rect x="7" y="7" width="186" height="286"/>
+      <line x1="7" y1="150" x2="193" y2="150"/>
+    </g>
+  </svg>
+</div>
 <canvas id="sky"></canvas>
 
 <header hidden id="bar">
@@ -160,8 +169,8 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 
 <div id="gate">
   <div class="card">
-    <h2>Pizarra</h2>
-    <p>Dibujás algo chiquito, lo soltás, y se multiplica por la pantalla de los dos.</p>
+    <h2></h2>
+    <p></p>
     <input type="email" id="email" placeholder="mail" autocomplete="username">
     <input type="password" id="pass" placeholder="contraseña" autocomplete="current-password">
     <button class="btn" id="in">Entrar</button>
@@ -190,9 +199,9 @@ import { getDatabase, ref, push, remove, query, orderByChild, startAt, endAt,
   };
 // ─────────────────────────────────────────────────────────────────
 
-const VIDA_HORAS   = 6;    // cuánto sobrevive un dibujo
-const CLON_CADA_MS = 4000; // cada cuánto se clona
-const CLONES_MAX   = 10;   // tope de copias por dibujo
+const VIDA_HORAS   = 1;    // cuánto sobrevive un dibujo
+const CLON_CADA_MS = 400; // cada cuánto se clona
+const CLONES_MAX   = 400;   // tope de copias por dibujo
 const SPRITES_MAX  = 120;  // tope global, por performance
 
 const app  = initializeApp(firebaseConfig);
@@ -274,10 +283,11 @@ function cuadro(t) {
   const dt = Math.min((t - ultimo) / 16.67, 3); ultimo = t;
 
   // estela: en vez de borrar del todo, desvanecemos
-  sx.globalCompositeOperation = "destination-out";
-  sx.fillStyle = `rgba(0,0,0,${lentos ? 1 : 0.075})`;
-  sx.fillRect(0, 0, W, H);
-  sx.globalCompositeOperation = "source-over";
+  // sx.globalCompositeOperation = "destination-out";
+  // sx.fillStyle = `rgba(0,0,0,${lentos ? 1 : 0.075})`;
+  // sx.fillRect(0, 0, W, H);
+  // sx.globalCompositeOperation = "source-over";
+     sx.clearRect(0, 0, W, H);
 
   for (const b of bandadas) {
     if (b.clones < CLONES_MAX && t > b.proximo) {
