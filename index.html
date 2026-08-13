@@ -30,36 +30,30 @@ body{
 }
 
 /* ventana */
-.ventana{
-  position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:var(--sol);
-  padding:clamp(6px,1.2vmin,16px);
+.ventana{position:fixed;inset:0;z-index:0;pointer-events:none}
+.escena{position:absolute;inset:7% 3%}
+.hoja{position:absolute;top:0;bottom:0;width:27%;background:var(--naranja)}
+.hoja .vidrio{position:absolute;inset:0;background:var(--vidrio)}
+.izq{left:0;clip-path:polygon(0 0,100% 9%,100% 91%,0 100%)}
+.izq .vidrio{clip-path:polygon(7% 5%,93% 13%,93% 87%,7% 95%)}
+.der{right:0;clip-path:polygon(0 9%,100% 0,100% 100%,0 91%)}
+.der .vidrio{clip-path:polygon(7% 13%,93% 5%,93% 95%,7% 87%)}
+.manija{
+  position:absolute;top:45%;height:9%;
+  width:clamp(5px,.8vmin,11px);background:var(--naranja);border-radius:99px;
 }
+.izq .manija{left:-1.2%}
+.der .manija{right:-1.2%}
 .marco{
-  height:100%;
-  background:var(--vidrio);
-  border:clamp(12px,2.4vmin,34px) solid var(--naranja);
-  position:relative;
-  transform:rotate(.35deg);
+  position:absolute;left:27%;right:27%;top:4%;bottom:6%;
+  background:var(--naranja);
+  padding:clamp(6px,1.1vmin,15px);
+  display:flex;gap:clamp(6px,1.1vmin,15px);
 }
-.riel{
-  position:absolute;top:4%;left:1%;right:1%;
-  height:clamp(7px,1.3vmin,18px);background:var(--naranja);
-  transform:rotate(-.5deg);
-}
-.riel i{
-  position:absolute;left:50%;top:-70%;
-  width:clamp(18px,3vmin,42px);height:240%;
-  background:var(--naranja);transform:translateX(-50%);
-}
-.travesano{
-  position:absolute;left:-1%;right:-1%;top:46%;
-  height:clamp(9px,1.8vmin,26px);background:var(--naranja);
-  transform:rotate(-.6deg);
-}
+.panel{flex:1;background:var(--vidrio)}
 .alfeizar{
-  position:absolute;left:0;right:0;bottom:0;height:15%;
-  background:var(--naranja);transform:rotate(.4deg);
+  position:absolute;left:23%;right:23%;bottom:0;
+  height:6%;background:var(--naranja);
 }
 #sky{position:fixed;inset:0;z-index:1;pointer-events:none}
 header{
@@ -101,6 +95,9 @@ header button:hover{opacity:1}
   touch-action:none;cursor:crosshair;
   display:block;
 }
+#studio.min > *:not(#toggle){display:none}
+#studio.min{padding:.45rem;gap:0}
+#toggle{align-self:flex-start;min-width:2.4rem}
 .tools{display:flex;flex-direction:column;gap:.7rem;justify-content:flex-end}
 .swatches{display:flex;gap:.35rem;align-items:center}
 .sw{
@@ -163,9 +160,10 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 </head>
 <body>
 <div class="ventana" aria-hidden="true">
-  <div class="marco">
-    <div class="riel"><i></i></div>
-    <div class="travesano"></div>
+  <div class="escena">
+    <div class="hoja izq"><div class="vidrio"></div><div class="manija"></div></div>
+    <div class="hoja der"><div class="vidrio"></div><div class="manija"></div></div>
+    <div class="marco"><div class="panel"></div><div class="panel"></div></div>
     <div class="alfeizar"></div>
   </div>
 </div>
@@ -187,6 +185,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
       <button class="btn ghost" id="clear">Borrar</button>
     </div>
     <span class="hint">Enter para soltar</span>
+    <button class="btn ghost" id="toggle" aria-expanded="true">–</button>
   </div>
 </section>
 
@@ -246,6 +245,11 @@ $("#in").addEventListener("click", async () => {
       : "No se pudo entrar: " + e.code;
   }
 });
+$("#toggle").onclick = () => {
+  const min = $("#studio").classList.toggle("min");
+  $("#toggle").textContent = min ? "Dibujar" : "–";
+  $("#toggle").setAttribute("aria-expanded", String(!min));
+};
 $("#pass").addEventListener("keydown", e => { if (e.key === "Enter") $("#in").click(); });
 $("#out").addEventListener("click", () => signOut(auth));
 
@@ -472,7 +476,7 @@ $("#send").onclick = async () => {
 };
 
 addEventListener("keydown", e => {
-  if (e.key === "Enter" && !$("#studio").hidden && document.activeElement.tagName !== "INPUT") {
+  if (e.key === "Enter" && !$("#studio").hidden && !$("#studio").classList.contains("min") && document.activeElement.tagName !== "INPUT") {
     e.preventDefault(); $("#send").click();
   }
 });
