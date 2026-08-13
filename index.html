@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pizarra</title>
+<title>Ventana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --madera:#C0663A;
+  --madera:#b46b46;
   --luz:#F6E9DE;
   --paper:#EDF1EC;
   --ink:#16232E;
@@ -31,7 +31,7 @@ body{
 .ventana{
   position:fixed;inset:0;z-index:0;
   display:grid;place-items:center;
-  opacity:.32;
+  opacity:.52;
   pointer-events:none;
 }
 .ventana svg{height:min(76vh,640px);width:auto;max-width:82vw}
@@ -142,14 +142,14 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
     <rect x="14" y="14" width="172" height="272" fill="var(--luz)"/>
     <g fill="none" stroke="var(--madera)" stroke-width="14">
       <rect x="7" y="7" width="186" height="286"/>
-      <line x1="7" y1="150" x2="193" y2="150"/>
+       <line x1="100" y1="7" x2="100" y2="293"/>
     </g>
   </svg>
 </div>
 <canvas id="sky"></canvas>
 
 <header hidden id="bar">
-  <h1>Pizarra</h1>
+  <h1>Ventana</h1>
   <span class="who" id="who"></span>
   <button id="out">salir</button>
 </header>
