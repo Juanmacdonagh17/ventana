@@ -31,7 +31,7 @@ body{
 }
 
 /* ventana */
-.ventana{position:fixed;inset:0;z-index:0;pointer-events:none}
+.ventana{position:fixed;inset:0;z-index:2;pointer-events:none}
 .escena{position:absolute;inset:7% 3%}
 
 /* hojas abiertas */
@@ -56,6 +56,23 @@ body{
 }
 .izq .manija{left:-1.2%}
 .der .manija{right:-1.2%}
+
+/* el menú vive en los cuatro vidrios de la hoja izquierda */
+.op{
+  position:absolute;width:38%;height:36%;
+  pointer-events:auto;cursor:pointer;
+  background:none;border:none;padding:2px;
+  display:grid;place-items:center;text-align:center;
+  font:inherit;font-size:clamp(.48rem,1.15vmin,.7rem);
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink);
+  opacity:.72;transition:opacity .15s;
+}
+.op:hover{opacity:1}
+.op[aria-disabled="true"]{opacity:.28;cursor:default}
+.op.a{left:9%;top:10%}
+.op.b{right:9%;top:14%}
+.op.c{left:9%;bottom:10%}
+.op.d{right:9%;bottom:14%}
 
 /* marco central: el cielo por donde vuelan los dibujos */
 .marco{
@@ -102,12 +119,12 @@ header button:hover{opacity:1}
 
 /* el taller: donde nacen los dibujos */
 #studio{
-  position:fixed;z-index:3;
+  position:fixed;z-index:4;
   left:50%;transform:translateX(-50%);
   bottom:max(1.2rem,env(safe-area-inset-bottom));
   display:flex;align-items:flex-end;gap:1rem;
   padding:.9rem;
-  background:rgba(237,241,236,.92);
+  background:rgba(237,241,236,.94);
   backdrop-filter:blur(6px);
   border:1px solid var(--rule);
   border-radius:2px;
@@ -121,9 +138,6 @@ header button:hover{opacity:1}
   touch-action:none;cursor:crosshair;
   display:block;
 }
-#studio.min > *:not(#toggle){display:none}
-#studio.min{padding:.45rem;gap:0}
-#toggle{align-self:flex-start;min-width:2.4rem}
 .tools{display:flex;flex-direction:column;gap:.7rem;justify-content:flex-end}
 .swatches{display:flex;gap:.35rem;align-items:center}
 .sw{
@@ -180,15 +194,20 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
   #studio{flex-direction:column;align-items:stretch;left:.8rem;right:.8rem;transform:none;gap:.7rem}
   .tools{flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap}
   #pad{width:100%;height:42vw}
+  .op{font-size:.46rem;letter-spacing:.04em;width:40%;height:34%}
 }
 @media (prefers-reduced-motion:reduce){#sky{opacity:.9}}
 </style>
 </head>
 <body>
-<div class="ventana" aria-hidden="true">
+<div class="ventana">
   <div class="escena">
     <div class="hoja izq">
       <div class="vidrio"></div>
+      <button class="op a" id="op-dibujar">Dibujar</button>
+      <button class="op b" id="op-limpiar">Limpiar</button>
+      <button class="op c" id="op-color" aria-label="Color de la ventana">Color</button>
+      <button class="op d" id="op-fondo" aria-disabled="true">Fondo</button>
       <div class="vara-v"></div><div class="vara-h"></div>
       <div class="manija"></div>
     </div>
@@ -220,10 +239,10 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
     <div class="row">
       <button class="btn" id="send" disabled>Soltar</button>
       <button class="btn ghost" id="clear">Borrar</button>
+      <button class="btn ghost" id="cerrar">Cerrar</button>
     </div>
     <span class="hint">Enter para soltar</span>
   </div>
-  <button class="btn ghost" id="toggle" aria-expanded="true">–</button>
 </section>
 
 <div id="gate">
@@ -242,7 +261,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getDatabase, ref, push, remove, query, orderByChild, startAt, endAt,
-  onChildAdded, get, serverTimestamp }
+  onChildAdded, onChildRemoved, get, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 // ── PEGAR ACÁ LA CONFIG DE TU PROYECTO FIREBASE ──────────────────
@@ -263,6 +282,7 @@ const CLON_CADA_MS = 10000; // cada cuánto se clona
 const CLONES_MAX   = 10;    // tope de copias por dibujo
 const SPRITES_MAX  = 120;   // tope global, por performance
 const AMANECE = 7, ANOCHECE = 19;
+const COLORES_VENTANA = ["#f76109","#2E7D6B","#3B4CE0","#B8298E","#C9A227","#16232E"];
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -299,11 +319,6 @@ $("#in").addEventListener("click", async () => {
       : "No se pudo entrar: " + e.code;
   }
 });
-$("#toggle").onclick = () => {
-  const min = $("#studio").classList.toggle("min");
-  $("#toggle").textContent = min ? "Dibujar" : "–";
-  $("#toggle").setAttribute("aria-expanded", String(!min));
-};
 $("#pass").addEventListener("keydown", e => { if (e.key === "Enter") $("#in").click(); });
 $("#out").addEventListener("click", () => signOut(auth));
 
@@ -311,12 +326,34 @@ let escuchando = false;
 onAuthStateChanged(auth, user => {
   $("#gate").hidden   = !!user;
   $("#bar").hidden    = !user;
-  $("#studio").hidden = !user;
+  if (!user) $("#studio").hidden = true;
   if (user) {
     $("#who").textContent = user.email.split("@")[0];
     if (!escuchando) { escuchando = true; limpiarViejos(); escuchar(); }
   }
 });
+
+/* ── el menú de la hoja izquierda ─────────────────────────────── */
+$("#op-dibujar").onclick = () => {
+  if (!auth.currentUser) return;
+  $("#studio").hidden = !$("#studio").hidden;
+};
+$("#cerrar").onclick = () => { $("#studio").hidden = true; };
+
+$("#op-limpiar").onclick = async () => {
+  if (!auth.currentUser) return;
+  if (!confirm("¿Borrar todos los dibujos? También los pierde la otra persona.")) return;
+  try { await remove(drawingsRef); }
+  catch (e) { console.error("no se pudo limpiar", e); }
+};
+
+let iColor = 0;
+$("#op-color").onclick = () => {
+  iColor = (iColor + 1) % COLORES_VENTANA.length;
+  document.documentElement.style.setProperty("--naranja", COLORES_VENTANA[iColor]);
+};
+
+$("#op-fondo").onclick = () => {};   // todavía no hace nada
 
 /* ── el cielo: canvas donde todo vuela ────────────────────────── */
 const sky = $("#sky"), sx = sky.getContext("2d");
@@ -333,13 +370,14 @@ const ajustar = () => {
 };
 addEventListener("resize", ajustar); ajustar();
 
-const bandadas = []; // { img, clones, proximo }
+const bandadas = []; // { key, img, clones, proximo }
 const sprites  = [];
 
 function nacer(bandada) {
   if (sprites.length >= SPRITES_MAX) sprites.shift();
   const orbita = Math.random() < 0.45;
   const s = {
+    b: bandada,
     img: bandada.img,
     escala: 0.55 + Math.random() * 0.6,
     rot: Math.random() * Math.PI * 2,
@@ -439,7 +477,16 @@ function escuchar() {
   onChildAdded(q, snap => {
     const d = snap.val();
     if (!d?.strokes) return;
-    bandadas.push({ img: pintar(d.strokes), clones: 0, proximo: 0 });
+    bandadas.push({ key: snap.key, img: pintar(d.strokes), clones: 0, proximo: 0 });
+  });
+  onChildRemoved(q, snap => {
+    const i = bandadas.findIndex(b => b.key === snap.key);
+    if (i < 0) return;
+    const b = bandadas[i];
+    bandadas.splice(i, 1);
+    for (let j = sprites.length - 1; j >= 0; j--) {
+      if (sprites[j].b === b) sprites.splice(j, 1);
+    }
   });
 }
 
@@ -539,7 +586,7 @@ $("#send").onclick = async () => {
 };
 
 addEventListener("keydown", e => {
-  if (e.key === "Enter" && !$("#studio").hidden && !$("#studio").classList.contains("min") && document.activeElement.tagName !== "INPUT") {
+  if (e.key === "Enter" && !$("#studio").hidden && document.activeElement.tagName !== "INPUT") {
     e.preventDefault(); $("#send").click();
   }
 });
