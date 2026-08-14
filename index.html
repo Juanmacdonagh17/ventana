@@ -98,9 +98,9 @@ body{
   position:absolute;left:23%;right:23%;bottom:0;
   height:6%;background:var(--naranja);
 }
-#sky{position:fixed;inset:0;z-index:1;pointer-events:none}
+#sky{position:fixed;inset:0;z-index:3;pointer-events:none}
 header{
-  position:fixed;top:0;left:0;right:0;z-index:3;
+  position:fixed;top:0;left:0;right:0;z-index:5;
   display:flex;align-items:baseline;gap:.9rem;
   padding:1.1rem 1.3rem;
   font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
@@ -167,7 +167,16 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 .btn.ghost{background:none;color:var(--ink);border-color:var(--rule)}
 .btn:disabled{opacity:.35;cursor:default}
 .hint{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;opacity:.45}
-
+#paleta{
+  position:fixed;z-index:6;
+  left:max(.8rem,env(safe-area-inset-left));
+  bottom:max(1.2rem,env(safe-area-inset-bottom));
+  display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;max-width:60vw;
+  padding:.6rem;border-radius:2px;
+  background:rgba(237,241,236,.94);backdrop-filter:blur(6px);
+  border:1px solid var(--rule);
+  box-shadow:0 10px 30px -18px rgba(22,35,46,.5);
+}
 /* puerta */
 #gate{
   position:fixed;inset:0;z-index:9;
@@ -245,6 +254,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
   </div>
 </section>
 
+<div id="paleta" hidden aria-label="Color de la ventana"></div>
 <div id="gate">
   <div class="card">
     <h2></h2>
@@ -337,6 +347,7 @@ onAuthStateChanged(auth, user => {
 $("#op-dibujar").onclick = () => {
   if (!auth.currentUser) return;
   $("#studio").hidden = !$("#studio").hidden;
+  paleta.hidden = true;
 };
 $("#cerrar").onclick = () => { $("#studio").hidden = true; };
 
@@ -347,11 +358,34 @@ $("#op-limpiar").onclick = async () => {
   catch (e) { console.error("no se pudo limpiar", e); }
 };
 
-let iColor = 0;
-$("#op-color").onclick = () => {
-  iColor = (iColor + 1) % COLORES_VENTANA.length;
-  document.documentElement.style.setProperty("--naranja", COLORES_VENTANA[iColor]);
+const paleta = $("#paleta");
+COLORES_VENTANA.forEach((c, i) => {
+  const b = document.createElement("button");
+  b.className = "sw"; b.style.background = c;
+  b.setAttribute("aria-label", "color de ventana " + (i + 1));
+  b.setAttribute("aria-pressed", i === 0);
+  b.onclick = () => {
+    document.documentElement.style.setProperty("--naranja", c);
+    marcar("#paleta", b);
+  };
+  paleta.append(b);
+});
+const libreVentana = document.createElement("input");
+libreVentana.type = "color"; libreVentana.value = COLORES_VENTANA[0];
+libreVentana.setAttribute("aria-label", "otro color de ventana");
+libreVentana.oninput = () => {
+  document.documentElement.style.setProperty("--naranja", libreVentana.value);
+  marcar("#paleta", null);
 };
+paleta.append(libreVentana);
+
+$("#op-color").onclick = () => { paleta.hidden = !paleta.hidden; };
+
+addEventListener("pointerdown", e => {
+  if (!paleta.hidden && !paleta.contains(e.target) && e.target !== $("#op-color")) {
+    paleta.hidden = true;
+  }
+});
 
 $("#op-fondo").onclick = () => {};   // todavía no hace nada
 
