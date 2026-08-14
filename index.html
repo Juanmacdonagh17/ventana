@@ -11,12 +11,13 @@
 :root{
   --naranja:#f76109;
   --vidrio:#EDF1EC;   /* el hueco del vidrio: tiene que ser el color del fondo */
-  --sol:#ff7b001d;
+  --astro:#f7a409;
   --paper:#EDF1EC;
   --ink:#16232E;
   --rule:#C4D3CA;
   --accent:#3B4CE0;
   --warm:#E2714A;
+  --barra:clamp(5px,.9vmin,12px);
   --pad: 3cm;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -32,25 +33,50 @@ body{
 /* ventana */
 .ventana{position:fixed;inset:0;z-index:0;pointer-events:none}
 .escena{position:absolute;inset:7% 3%}
+
+/* hojas abiertas */
 .hoja{position:absolute;top:0;bottom:0;width:27%;background:var(--naranja)}
 .hoja .vidrio{position:absolute;inset:0;background:var(--vidrio)}
 .izq{left:0;clip-path:polygon(0 0,100% 9%,100% 91%,0 100%)}
 .izq .vidrio{clip-path:polygon(7% 5%,93% 13%,93% 87%,7% 95%)}
 .der{right:0;clip-path:polygon(0 9%,100% 0,100% 100%,0 91%)}
 .der .vidrio{clip-path:polygon(7% 13%,93% 5%,93% 95%,7% 87%)}
+/* cruceta: cuatro vidrios por hoja */
+.vara-v{
+  position:absolute;left:50%;top:5%;bottom:5%;
+  width:var(--barra);background:var(--naranja);transform:translateX(-50%);
+}
+.vara-h{
+  position:absolute;left:6%;right:6%;top:50%;
+  height:var(--barra);background:var(--naranja);transform:translateY(-50%);
+}
 .manija{
   position:absolute;top:45%;height:9%;
   width:clamp(5px,.8vmin,11px);background:var(--naranja);border-radius:99px;
 }
 .izq .manija{left:-1.2%}
 .der .manija{right:-1.2%}
+
+/* marco central: el cielo por donde vuelan los dibujos */
 .marco{
   position:absolute;left:27%;right:27%;top:4%;bottom:6%;
-  background:var(--naranja);
-  padding:clamp(6px,1.1vmin,15px);
-  display:flex;gap:clamp(6px,1.1vmin,15px);
+  border:var(--barra) solid var(--naranja);
+  background:var(--vidrio);
+  overflow:hidden;
 }
-.panel{flex:1;background:var(--vidrio)}
+.cielo{position:absolute;inset:0;overflow:hidden}
+.sol{
+  position:absolute;
+  width:clamp(38px,7vmin,90px);aspect-ratio:1;
+  border-radius:50%;background:var(--astro);
+  transform:translate(-50%,-50%);
+  transition:left 2s linear,top 2s linear;
+}
+.sol.noche{background:#c3cbd4}
+.montante{
+  position:absolute;left:50%;top:0;bottom:0;
+  width:var(--barra);background:var(--naranja);transform:translateX(-50%);
+}
 .alfeizar{
   position:absolute;left:23%;right:23%;bottom:0;
   height:6%;background:var(--naranja);
@@ -161,9 +187,20 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 <body>
 <div class="ventana" aria-hidden="true">
   <div class="escena">
-    <div class="hoja izq"><div class="vidrio"></div><div class="manija"></div></div>
-    <div class="hoja der"><div class="vidrio"></div><div class="manija"></div></div>
-    <div class="marco"><div class="panel"></div><div class="panel"></div></div>
+    <div class="hoja izq">
+      <div class="vidrio"></div>
+      <div class="vara-v"></div><div class="vara-h"></div>
+      <div class="manija"></div>
+    </div>
+    <div class="hoja der">
+      <div class="vidrio"></div>
+      <div class="vara-v"></div><div class="vara-h"></div>
+      <div class="manija"></div>
+    </div>
+    <div class="marco">
+      <div class="cielo"><div class="sol" id="sol"></div></div>
+      <div class="montante"></div>
+    </div>
     <div class="alfeizar"></div>
   </div>
 </div>
@@ -225,6 +262,7 @@ const VIDA_HORAS   = 1;     // cuánto sobrevive un dibujo
 const CLON_CADA_MS = 10000; // cada cuánto se clona
 const CLONES_MAX   = 10;    // tope de copias por dibujo
 const SPRITES_MAX  = 120;   // tope global, por performance
+const AMANECE = 7, ANOCHECE = 19;
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -233,6 +271,22 @@ const drawingsRef = ref(db, "drawings");
 
 const $ = s => document.querySelector(s);
 const lentos = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ── el sol, según la hora ────────────────────────────────────── */
+function ubicarAstro() {
+  const d = new Date(), h = d.getHours() + d.getMinutes() / 60;
+  const dia = h >= AMANECE && h < ANOCHECE;
+  const largo = dia ? ANOCHECE - AMANECE : 24 - (ANOCHECE - AMANECE);
+  const t = dia
+    ? (h - AMANECE) / largo
+    : ((h < AMANECE ? h + 24 : h) - ANOCHECE) / largo;
+  const sol = $("#sol");
+  sol.style.left = (6 + t * 88) + "%";
+  sol.style.top  = (92 - 78 * Math.sin(Math.PI * t)) + "%";
+  sol.classList.toggle("noche", !dia);
+}
+ubicarAstro();
+setInterval(ubicarAstro, 60000);
 
 /* ── entrar ───────────────────────────────────────────────────── */
 $("#in").addEventListener("click", async () => {
@@ -267,11 +321,15 @@ onAuthStateChanged(auth, user => {
 /* ── el cielo: canvas donde todo vuela ────────────────────────── */
 const sky = $("#sky"), sx = sky.getContext("2d");
 let W, H;
+const caja = { x: 0, y: 0, w: 1, h: 1 };   // el interior del marco central
+
 const ajustar = () => {
   const d = Math.min(devicePixelRatio || 1, 2);
   W = innerWidth; H = innerHeight;
   sky.width = W * d; sky.height = H * d;
   sx.setTransform(d, 0, 0, d, 0, 0);
+  const r = $(".cielo").getBoundingClientRect();
+  caja.x = r.left; caja.y = r.top; caja.w = r.width; caja.h = r.height;
 };
 addEventListener("resize", ajustar); ajustar();
 
@@ -289,15 +347,16 @@ function nacer(bandada) {
     modo: orbita ? "orbita" : "vuelo"
   };
   if (orbita) {
-    s.cx = W * (0.15 + Math.random() * 0.7);
-    s.cy = H * (0.15 + Math.random() * 0.7);
-    s.r  = 60 + Math.random() * Math.min(W, H) * 0.28;
+    s.cx = caja.x + caja.w * (0.2 + Math.random() * 0.6);
+    s.cy = caja.y + caja.h * (0.2 + Math.random() * 0.6);
+    s.r  = Math.min(caja.w, caja.h) * (0.1 + Math.random() * 0.22);
     s.ang = Math.random() * Math.PI * 2;
     s.vang = (Math.random() < 0.5 ? -1 : 1) * (0.0022 + Math.random() * 0.0035);
     s.dx = (Math.random() - 0.5) * 0.22;
     s.dy = (Math.random() - 0.5) * 0.22;
   } else {
-    s.x = Math.random() * W; s.y = Math.random() * H;
+    s.x = caja.x + Math.random() * caja.w;
+    s.y = caja.y + Math.random() * caja.h;
     const a = Math.random() * Math.PI * 2, v = 1.6 + Math.random() * 1.9;
     s.vx = Math.cos(a) * v; s.vy = Math.sin(a) * v;
   }
@@ -317,29 +376,38 @@ function cuadro(t) {
     }
   }
 
+  // nada se dibuja fuera del marco
+  sx.save();
+  sx.beginPath();
+  sx.rect(caja.x, caja.y, caja.w, caja.h);
+  sx.clip();
+
+  const base = Math.min(caja.w, caja.h) * 0.22;
   for (const s of sprites) {
+    const w = base * s.escala, m = w;
     let x, y;
     if (s.modo === "vuelo") {
       s.x += s.vx * dt; s.y += s.vy * dt;
-      const m = 90 * s.escala;
-      if (s.x < -m) s.x = W + m; if (s.x > W + m) s.x = -m;
-      if (s.y < -m) s.y = H + m; if (s.y > H + m) s.y = -m;
+      if (s.x < caja.x - m)          s.x = caja.x + caja.w + m;
+      if (s.x > caja.x + caja.w + m) s.x = caja.x - m;
+      if (s.y < caja.y - m)          s.y = caja.y + caja.h + m;
+      if (s.y > caja.y + caja.h + m) s.y = caja.y - m;
       x = s.x; y = s.y;
     } else {
       s.ang += s.vang * dt;
       s.cx += s.dx * dt; s.cy += s.dy * dt;
-      if (s.cx < 0 || s.cx > W) s.dx *= -1;
-      if (s.cy < 0 || s.cy > H) s.dy *= -1;
+      if (s.cx < caja.x || s.cx > caja.x + caja.w) s.dx *= -1;
+      if (s.cy < caja.y || s.cy > caja.y + caja.h) s.dy *= -1;
       x = s.cx + Math.cos(s.ang) * s.r;
       y = s.cy + Math.sin(s.ang) * s.r * 0.55;
     }
     s.rot += s.vrot * dt;
-    const w = s.img.width * s.escala * 0.5;
     sx.save();
     sx.translate(x, y); sx.rotate(s.rot);
     sx.drawImage(s.img, -w / 2, -w / 2, w, w);
     sx.restore();
   }
+  sx.restore();
   requestAnimationFrame(cuadro);
 }
 requestAnimationFrame(cuadro);
