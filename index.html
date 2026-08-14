@@ -10,7 +10,7 @@
 <style>
 :root{
   --naranja:#f76109;
-  --vidrio:#5a554a00;
+  --vidrio:#EDF1EC;   /* el hueco del vidrio: tiene que ser el color del fondo */
   --sol:#ff7b001d;
   --paper:#EDF1EC;
   --ink:#16232E;
@@ -185,8 +185,8 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
       <button class="btn ghost" id="clear">Borrar</button>
     </div>
     <span class="hint">Enter para soltar</span>
-    <button class="btn ghost" id="toggle" aria-expanded="true">–</button>
   </div>
+  <button class="btn ghost" id="toggle" aria-expanded="true">–</button>
 </section>
 
 <div id="gate">
@@ -221,10 +221,10 @@ import { getDatabase, ref, push, remove, query, orderByChild, startAt, endAt,
   };
 // ─────────────────────────────────────────────────────────────────
 
-const VIDA_HORAS   = 1;    // cuánto sobrevive un dibujo
+const VIDA_HORAS   = 1;     // cuánto sobrevive un dibujo
 const CLON_CADA_MS = 10000; // cada cuánto se clona
-const CLONES_MAX   = 10;   // tope de copias por dibujo
-const SPRITES_MAX  = 120;  // tope global, por performance
+const CLONES_MAX   = 10;    // tope de copias por dibujo
+const SPRITES_MAX  = 120;   // tope global, por performance
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -275,11 +275,11 @@ const ajustar = () => {
 };
 addEventListener("resize", ajustar); ajustar();
 
-const bandadas = []; // { sprite, clones, proximo }
+const bandadas = []; // { img, clones, proximo }
 const sprites  = [];
 
 function nacer(bandada) {
-  if (sprites.length >= SPRITES_MAX) return;
+  if (sprites.length >= SPRITES_MAX) sprites.shift();
   const orbita = Math.random() < 0.45;
   const s = {
     img: bandada.img,
@@ -309,12 +309,7 @@ let ultimo = performance.now();
 function cuadro(t) {
   const dt = Math.min((t - ultimo) / 16.67, 3); ultimo = t;
 
-  // estela: en vez de borrar del todo, desvanecemos
-  // sx.globalCompositeOperation = "destination-out";
-  // sx.fillStyle = `rgba(0,0,0,${lentos ? 1 : 0.075})`;
-  // sx.fillRect(0, 0, W, H);
-  // sx.globalCompositeOperation = "source-over";
-     sx.clearRect(0, 0, W, H);
+  sx.clearRect(0, 0, W, H);
 
   for (const b of bandadas) {
     if (b.clones < CLONES_MAX && t > b.proximo) {
